@@ -240,6 +240,7 @@ def scrape_feed_url(url, nicename='NoneProvided'):
         tmp['guid'] = entry.guid
         tmp['showname'] = fp_data.feed.title
         tmp['nicename'] = nicename
+        tmp['description'] = entry.description
 
         # prep updated_parsed for conversion datetime object
         dnt = list(entry.published_parsed[0:5])
@@ -382,8 +383,12 @@ def download_episode(episode, custom=None):
     # - get extension from url
     ext = sanitize_filename(search('(.+)(\..+?)$', episode['url']).group(2))
 
-    # clean up title, concatenate with extension and use it as the filename
-    fname = sanitize_filename(episode['title']) + ext
+    # clean up title, concatenate with extension and use it as the filename or
+    # use the original name contained within the URL
+    if custom == 'fname':
+        fname = search('(.+)\/(.+?)$', episode['url']).group(2)
+    else:
+        fname = sanitize_filename(episode['title']) + ext
 
     # skip downloading and bail if the user asked for it
     if CONFIG.get('skipdl', 'false') == 'true':
@@ -392,11 +397,19 @@ def download_episode(episode, custom=None):
 
     # download the file
     if 'dl_file_name' in episode:
-        urllib.urlretrieve(episode['url'], \
-            fixpath(CONFIG['d_download_dir'] + custom), dl_progress)
+        if custom == 'fname':
+            urllib.urlretrieve(episode['url'], \
+                fixpath(CONFIG['d_download_dir'] + fname), dl_progress)
+        else:
+            urllib.urlretrieve(episode['url'], \
+                fixpath(CONFIG['d_download_dir'] + custom), dl_progress)
     else:
         urllib.urlretrieve(episode['url'], \
             fixpath(CONFIG['d_download_dir'] + fname), dl_progress)
+
+    # write out the description
+    show_notes = '%s\n%s\n\n%s\n' % (episode['title'], episode['date'].strftime("%A, %B %-d, %Y"), episode['description'])
+    open(os.path.expanduser(CONFIG['d_download_dir']) + fname + '.txt', 'wb').write(show_notes.encode('ascii', 'ignore'))
 
     # mark episode as old
     mark_as_old(episode)

@@ -185,7 +185,10 @@ if __name__ == '__main__':
         # download the episode
         if 'dl_file_name' in n:
             dlfn = redrain.custom_name(n, n['dl_file_name'])
-            print 'downloading: ' + dlfn + ' ...'
+            if  n['dl_file_name'] != 'fname':
+                print 'downloading: ' + dlfn + ' ...'
+            else:
+                print 'downloading: ' + n['title'] + ' ...'
             redrain.download_episode(n, dlfn)
         else:
             print 'downloading: ' + n['title'] + ' ...'

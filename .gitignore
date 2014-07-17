@@ -6,3 +6,4 @@ feedparser5.py
 testcache/*
 *.txt
 /feedparser.py
+.idea/
