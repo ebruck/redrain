@@ -235,12 +235,22 @@ def scrape_feed_url(url, nicename='NoneProvided'):
 
     # iterate over the entries within the feed
     for entry in fp_data.entries:
+        # skip failed parsing
+        if entry.published_parsed == None:
+            print "Parsing Error:", entry
+            continue
+
         tmp = dict()
         tmp['title'] = entry.title
-        tmp['guid'] = entry.guid
         tmp['showname'] = fp_data.feed.title
         tmp['nicename'] = nicename
         tmp['description'] = entry.description
+
+        # switch to title if this feed has no guid
+        if entry.has_key('guid'):
+            tmp['guid'] = entry.guid
+        else:
+            tmp['guid'] = entry.title
 
         # prep updated_parsed for conversion datetime object
         dnt = list(entry.published_parsed[0:5])
