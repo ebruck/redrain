@@ -383,33 +383,28 @@ def download_episode(episode, custom=None):
     # - get extension from url
     ext = sanitize_filename(search('(.+)(\..+?)$', episode['url']).group(2))
 
-    # clean up title, concatenate with extension and use it as the filename or
-    # use the original name contained within the URL
-    if custom == 'fname':
-        fname = search('(.+)\/(.+?)$', episode['url']).group(2)
-    else:
-        fname = sanitize_filename(episode['title']) + ext
+    # clean up title, concatenate with extension and use it as the filename
+    fname = sanitize_filename(episode['title']) + ext
 
     # skip downloading and bail if the user asked for it
     if CONFIG.get('skipdl', 'false') == 'true':
         mark_as_old(episode)
         return
 
-    # download the file
-    if 'dl_file_name' in episode:
-        if custom == 'fname':
-            urllib.urlretrieve(episode['url'], \
-                fixpath(CONFIG['d_download_dir'] + fname), dl_progress)
-        else:
-            urllib.urlretrieve(episode['url'], \
-                fixpath(CONFIG['d_download_dir'] + custom), dl_progress)
-    else:
-        urllib.urlretrieve(episode['url'], \
-            fixpath(CONFIG['d_download_dir'] + fname), dl_progress)
+    # create output dir if required
+    output_dir = fixpath(CONFIG['d_download_dir'] + episode['nicename'])
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
 
-    # write out the description
+    # download the file & write out the description
+    output_dir += '/'
     show_notes = '%s\n%s\n\n%s\n' % (episode['title'], episode['date'].strftime("%A, %B %-d, %Y"), episode['description'])
-    open(os.path.expanduser(CONFIG['d_download_dir']) + fname + '.txt', 'wb').write(show_notes.encode('ascii', 'ignore'))
+    if 'dl_file_name' in episode:
+        urllib.urlretrieve(episode['url'], fixpath(output_dir + custom), dl_progress)
+        open(fixpath(output_dir + custom) + '.txt', 'wb').write(show_notes.encode('ascii', 'ignore'))
+    else:
+        urllib.urlretrieve(episode['url'], fixpath(output_dir + fname), dl_progress)
+        open(fixpath(output_dir + fname) + '.txt', 'wb').write(show_notes.encode('ascii', 'ignore'))
 
     # mark episode as old
     mark_as_old(episode)
@@ -452,33 +447,36 @@ def custom_name(podcast, fstring):
     # copy the original hash
     replacements = podcast.copy()
 
-    # expand the hash and make sure that everything in it is a string
-    # - create filename from url
-    replacements['ext'] = search('(.+)(\..+?)$', podcast['url']).group(2)
+    if fstring != 'fname':
+        # expand the hash and make sure that everything in it is a string
+        # - create filename from url
+        replacements['ext'] = search('(.+)(\..+?)$', podcast['url']).group(2)
 
-    # - replace date and time with strings
-    tmp = replacements['date']
-    replacements['date'] = replacements['date'].strftime('%Y-%m-%d')
-    replacements['time'] = tmp.strftime('%H%M')
+        # - replace date and time with strings
+        tmp = replacements['date']
+        replacements['date'] = replacements['date'].strftime('%Y-%m-%d')
+        replacements['time'] = tmp.strftime('%H%M')
 
-    # - today's date and time strings (as opposed to 'updated' time/date)
-    tmp = time.localtime()
-    now = datetime(tmp[0], tmp[1], tmp[2], tmp[3], tmp[4])
-    replacements['ltime'] = now.strftime('%H%M')
-    replacements['ldate'] = now.strftime('%Y-%m-%d')
+        # - today's date and time strings (as opposed to 'updated' time/date)
+        tmp = time.localtime()
+        now = datetime(tmp[0], tmp[1], tmp[2], tmp[3], tmp[4])
+        replacements['ltime'] = now.strftime('%H%M')
+        replacements['ldate'] = now.strftime('%Y-%m-%d')
 
-    # construct the regular expression from the keys of 'replacements'
-    allkeys = '%{('
-    for key in replacements.keys():
-        allkeys = allkeys + key + '|'
-    allkeys = allkeys[:-1] + ')}'
+        # construct the regular expression from the keys of 'replacements'
+        allkeys = '%{('
+        for key in replacements.keys():
+            allkeys = allkeys + key + '|'
+        allkeys = allkeys[:-1] + ')}'
 
-    # replace the user-specified tokens
-    for _ in xrange(fstring.count('%')):
-        result = search(allkeys, fstring)
-        if result is not None:
-            fstring = re.sub('%{' + result.group(1) + '}', \
-                replacements[result.group(1)], fstring)
+        # replace the user-specified tokens
+        for _ in xrange(fstring.count('%')):
+            result = search(allkeys, fstring)
+            if result is not None:
+                fstring = re.sub('%{' + result.group(1) + '}', \
+                    replacements[result.group(1)], fstring)
+    else:
+        fstring = search('(.+)\/(.+?)$', podcast['url']).group(2)
 
     # clean it up, just in case
     fstring = sanitize_filename(fstring)
