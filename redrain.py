@@ -392,12 +392,14 @@ def download_episode(episode, custom=None):
         return
 
     # create output dir if required
-    output_dir = fixpath(CONFIG['d_download_dir'] + episode['nicename'])
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+    output_dir = fixpath(CONFIG['d_download_dir'])
+    if episode['nicename'] != "NoneProvided":
+        output_dir = fixpath(CONFIG['d_download_dir'] + episode['nicename'])
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+    output_dir += '/'
 
     # download the file & write out the description
-    output_dir += '/'
     show_notes = '%s\n%s\n\n%s\n' % (episode['title'], episode['date'].strftime("%A, %B %-d, %Y"), episode['description'])
     if 'dl_file_name' in episode:
         urllib.urlretrieve(episode['url'], fixpath(output_dir + custom), dl_progress)
